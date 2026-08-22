@@ -1,0 +1,28 @@
+[package]
+name = "danie-api"
+description = "Stateless HTTP API over the danie tutor engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "danie-api"
+path = "src/main.rs"
+
+[dependencies]
+axum = "0.8"
+tokio = { workspace = true, features = ["net"] }
+tower-http = { version = "0.6", features = ["cors"] }
+serde.workspace = true
+serde_json.workspace = true
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = "0.4"
+danie-core = { path = "../danie-core" }
+danie-engine = { path = "../danie-engine" }
+danie-llm = { path = "../danie-llm" }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+async-trait.workspace = true

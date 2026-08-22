@@ -1,6 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["crates/danie-core", "crates/danie-llm", "danie"]
+members = [
+    "crates/danie-core",
+    "crates/danie-llm",
+    "crates/danie-engine",
+    "crates/danie-api",
+    "danie",
+]
 
 [workspace.package]
 version = "0.1.0"

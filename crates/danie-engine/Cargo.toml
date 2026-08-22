@@ -1,0 +1,18 @@
+[package]
+name = "danie-engine"
+description = "Tutor loop engine for danie: probe, plan DAG, lessons, prerequisites and review questions"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+danie-core = { path = "../danie-core" }
+danie-llm = { path = "../danie-llm" }
+serde.workspace = true
+serde_json.workspace = true
+tracing = "0.1"
+
+[dev-dependencies]
+tokio.workspace = true
+async-trait.workspace = true

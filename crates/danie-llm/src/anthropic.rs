@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use serde_json::{json, Value};
 
 use crate::error::LlmError;
@@ -8,6 +10,21 @@ use crate::retry::send_with_retry;
 pub const DEFAULT_BASE_URL: &str = "https://api.anthropic.com";
 
 const ANTHROPIC_VERSION: &str = "2023-06-01";
+
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
+
+fn build_client_with(connect_timeout: Duration, request_timeout: Duration) -> reqwest::Client {
+    reqwest::Client::builder()
+        .connect_timeout(connect_timeout)
+        .timeout(request_timeout)
+        .build()
+        .expect("valid HTTP client configuration")
+}
+
+fn build_client() -> reqwest::Client {
+    build_client_with(CONNECT_TIMEOUT, REQUEST_TIMEOUT)
+}
 
 /// Provider for the Anthropic Messages API (`/v1/messages`).
 #[derive(Debug, Clone)]
@@ -22,7 +39,7 @@ impl AnthropicProvider {
     /// Creates a provider targeting the public Anthropic API.
     pub fn new(api_key: impl Into<String>, model: impl Into<String>) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: build_client(),
             api_key: api_key.into(),
             model: model.into(),
             base_url: DEFAULT_BASE_URL.to_string(),

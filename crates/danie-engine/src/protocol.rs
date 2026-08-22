@@ -1,6 +1,6 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ProbeQuestionDto {
     pub strand: String,
     pub question: String,
@@ -8,7 +8,7 @@ pub struct ProbeQuestionDto {
     pub correct_index: usize,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProbeDto {
     pub questions: Vec<ProbeQuestionDto>,
 }
@@ -22,21 +22,21 @@ impl ProbeQuestionDto {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PlanNodeDto {
     pub id: String,
     pub title: String,
     pub summary: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct PlanDto {
     pub nodes: Vec<PlanNodeDto>,
     #[serde(default)]
     pub edges: Vec<(String, String)>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct QuizDto {
     pub prompt: String,
     pub options: Vec<String>,
@@ -63,7 +63,7 @@ impl QuizDto {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TeachLessonDto {
     pub title: String,
     pub body_md: String,
@@ -82,7 +82,7 @@ impl TeachLessonDto {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PrereqDto {
     pub id: String,
     pub title: String,

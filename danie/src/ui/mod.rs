@@ -21,8 +21,8 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use tokio::runtime::Runtime;
 
-use crate::engine::{self, quality_value, QUALITY_LABELS};
-use crate::protocol::{PrereqDto, ProbeQuestionDto, QuizDto, TeachLessonDto};
+use danie_engine::protocol::{PrereqDto, ProbeQuestionDto, QuizDto, TeachLessonDto};
+use danie_engine::{self as engine, quality_value, QUALITY_LABELS};
 
 pub const WRONG_MENU_OPTIONS: [&str; 4] = [
     "Retry quiz",

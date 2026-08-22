@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 danie-core = { path = "../crates/danie-core" }
+danie-engine = { path = "../crates/danie-engine" }
 danie-llm = { path = "../crates/danie-llm" }
 clap = { version = "4", features = ["derive"] }
 ratatui = "0.29"

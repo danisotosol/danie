@@ -5,8 +5,8 @@ use ratatui::widgets::{Block, BorderType, Clear, Paragraph};
 use ratatui::Frame;
 
 use super::{App, Screen, WRONG_MENU_OPTIONS};
-use crate::engine::QUALITY_LABELS;
 use crate::textutil::{strip_inline_markdown, wrap_text};
+use danie_engine::QUALITY_LABELS;
 
 const THINKING_TEXT: &str = " Thinking... calling the model ";
 
@@ -477,7 +477,7 @@ fn render_plan_view(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(wrapped_paragraph(lines, inner, app.scroll), inner);
 }
 
-fn current_quiz(app: &App) -> Option<&crate::protocol::QuizDto> {
+fn current_quiz(app: &App) -> Option<&danie_engine::protocol::QuizDto> {
     if app.mode == super::Mode::Review {
         return app.review_quiz.as_ref();
     }
@@ -530,7 +530,7 @@ fn render_teach_quiz(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_reveal_content(
-    quiz: &crate::protocol::QuizDto,
+    quiz: &danie_engine::protocol::QuizDto,
     reveal: &super::RevealInfo,
     width: usize,
 ) -> Vec<Line<'static>> {

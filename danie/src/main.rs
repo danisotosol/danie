@@ -1,9 +1,6 @@
 mod cli;
 mod doctor;
-mod engine;
 mod logging;
-mod prompts;
-mod protocol;
 mod textutil;
 mod ui;
 

@@ -1,8 +1,25 @@
+use std::time::Duration;
+
 use serde_json::{json, Value};
 
 use crate::error::LlmError;
 use crate::provider::{ChatRequest, ChatResponse, LlmProvider};
 use crate::retry::send_with_retry;
+
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
+
+fn build_client_with(connect_timeout: Duration, request_timeout: Duration) -> reqwest::Client {
+    reqwest::Client::builder()
+        .connect_timeout(connect_timeout)
+        .timeout(request_timeout)
+        .build()
+        .expect("valid HTTP client configuration")
+}
+
+fn build_client() -> reqwest::Client {
+    build_client_with(CONNECT_TIMEOUT, REQUEST_TIMEOUT)
+}
 
 /// Provider for any OpenAI-compatible chat completions endpoint
 /// (OpenAI, Ollama, LM Studio, vLLM, ...).
@@ -24,7 +41,24 @@ impl OpenAiCompatProvider {
         model: impl Into<String>,
     ) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: build_client(),
+            base_url: base_url.into(),
+            api_key,
+            model: model.into(),
+        }
+    }
+
+    /// Creates a provider with explicit connect and total request timeouts.
+    #[cfg(test)]
+    pub(crate) fn with_timeouts(
+        base_url: impl Into<String>,
+        api_key: Option<String>,
+        model: impl Into<String>,
+        connect_timeout: Duration,
+        request_timeout: Duration,
+    ) -> Self {
+        Self {
+            client: build_client_with(connect_timeout, request_timeout),
             base_url: base_url.into(),
             api_key,
             model: model.into(),
@@ -196,6 +230,38 @@ mod tests {
             }
             other => panic!("unexpected error: {other:?}"),
         }
+        assert_eq!(received(&server).await.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn total_timeout_aborts_hanging_endpoint_after_one_retry() {
+        use std::time::Duration;
+
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/chat/completions"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_delay(Duration::from_secs(5))
+                    .set_body_json(json!({
+                        "choices": [{ "message": { "content": "late" } }],
+                        "model": "m",
+                    })),
+            )
+            .expect(2)
+            .mount(&server)
+            .await;
+
+        let provider = OpenAiCompatProvider::with_timeouts(
+            server.uri(),
+            None,
+            "m",
+            Duration::from_secs(1),
+            Duration::from_millis(150),
+        );
+        let err = provider.chat(&user_request()).await.unwrap_err();
+
+        assert!(matches!(err, LlmError::Http(_)));
         assert_eq!(received(&server).await.len(), 2);
     }
 }

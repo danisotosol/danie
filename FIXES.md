@@ -25,5 +25,14 @@ Ordenado por prioridad. Repo: C:\Users\danie\Downloads\danie
 - Bajo prioridad; solo importa si se espera contenido CJK.
 
 ## Nota de contexto (no requiere acción ya)
-- Config validada en %APPDATA%\danie\config.toml: provider openai-compat,
-  base_url https://openrouter.ai/api/v1, modelo anthropic/claude-haiku-4.5.
+- Config validada: provider openai-compat, modelo stealth/ox-alpha via Nous proxy
+  (http://127.0.0.1:8645/v1). OpenRouter fallback documentado en README.
+
+## 7. NUEVO (2026-08-22): parser JSON falla con modelos reasoning (ox-alpha)
+- Síntoma reproducible: teach con ox-alpha → "invalid model payload: control
+  character (\u0000-\u001F) found while parsing a string" — el modelo emite
+  saltos de línea literales dentro de strings JSON (en código Rust de ejemplo).
+- El contenido es correcto; falta tolerar \n crudos dentro de strings antes del
+  parse (escape o sanitización previa al serde_json::from_str, y solo como
+  fallback tras el reintento normal).
+- Captura: docs/screenshots/04-error-state.png
