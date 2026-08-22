@@ -187,6 +187,55 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn summarizes_html_error_pages_and_truncates_long_bodies() {
+        let server = MockServer::start().await;
+        let html = format!("<html><body>{}</body></html>", "x".repeat(600));
+        Mock::given(method("POST"))
+            .and(path("/v1/messages"))
+            .respond_with(ResponseTemplate::new(404).set_body_string(html))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let provider = AnthropicProvider::new("k", "m").with_base_url(server.uri());
+        let err = provider
+            .chat(&ChatRequest::new(vec![Message::new(Role::User, "hola")]))
+            .await
+            .unwrap_err();
+
+        match err {
+            LlmError::Status { code, body } => {
+                assert_eq!(code, 404);
+                assert_eq!(body, "non-JSON response (HTML page)");
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+
+        let long_plain = "y".repeat(500);
+        let server2 = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/messages"))
+            .respond_with(ResponseTemplate::new(503).set_body_string(long_plain.clone()))
+            .expect(2)
+            .mount(&server2)
+            .await;
+        let provider2 = AnthropicProvider::new("k", "m").with_base_url(server2.uri());
+        let err2 = provider2
+            .chat(&ChatRequest::new(vec![Message::new(Role::User, "hola")]))
+            .await
+            .unwrap_err();
+        match err2 {
+            LlmError::Status { code, body } => {
+                assert_eq!(code, 503);
+                assert_eq!(body.chars().count(), 201);
+                assert!(body.ends_with('…'));
+                assert!(long_plain.starts_with(body.trim_end_matches('…')));
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
     async fn retries_once_on_server_error_then_succeeds() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))

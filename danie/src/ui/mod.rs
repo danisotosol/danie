@@ -267,6 +267,18 @@ impl App {
                     .map(|strand| engine::normalize_id(&strand.name))
                     .collect();
                 self.map = Some(map);
+                match self.store.load_plan(&self.slug) {
+                    Ok(Some(plan)) => {
+                        if plan.node_count() > 0 {
+                            self.install_plan(plan);
+                        }
+                    }
+                    Ok(None) => {}
+                    Err(error) => {
+                        self.error =
+                            Some(format!("Could not load the stored plan: {error}"));
+                    }
+                }
                 self.screen = Screen::Dashboard;
             }
             Err(error) => {
@@ -346,6 +358,29 @@ impl App {
                 self.error = Some(format!("Failed to save the review schedule: {error}"))
             }
         }
+    }
+
+    fn persist_plan(&mut self) {
+        let Some(graph) = &self.graph else {
+            return;
+        };
+        match self.store.save_plan(&self.slug, graph) {
+            Ok(path) => self.note_path(path),
+            Err(error) => self.error = Some(format!("Failed to save the learning plan: {error}")),
+        }
+    }
+
+    fn install_plan(&mut self, plan: PlanGraph) {
+        let mut nodes: std::collections::BTreeMap<String, PlanNode> =
+            std::collections::BTreeMap::new();
+        for node in plan.nodes() {
+            nodes.insert(node.id.clone(), node.clone());
+        }
+        self.edges = plan.edges();
+        self.graph = Some(plan);
+        self.nodes = nodes;
+        self.rebuild_plan_rows();
+        self.current_node = self.next_target();
     }
 
     fn finish_session(&mut self, notes: &str) {
@@ -860,13 +895,10 @@ impl App {
                 Self::push_unique(&mut self.session_locked, node_title);
                 self.progress_made = true;
                 self.persist_map();
-                self.queue.upsert_card(node_id.clone());
-                if let Some(card) = self.queue.cards.iter_mut().find(|card| card.node == node_id) {
-                    let _ = card.review(3);
-                }
-                self.persist_queue();
-                self.known.insert(node_id);
-                self.proceed_after_node();
+                self.known.insert(node_id.clone());
+                self.pending_quality_node = Some(node_id);
+                self.selected = 1;
+                self.screen = Screen::QualityMenu;
             }
             3 => self.finish_session("Ended early."),
             _ => {}
@@ -995,6 +1027,7 @@ impl App {
                 self.current_node = self.next_target();
                 self.scroll = 0;
                 self.screen = Screen::PlanView;
+                self.persist_plan();
             }
             StepResult::Lesson(lesson, id) => {
                 self.lesson = Some(lesson);
@@ -1046,6 +1079,7 @@ impl App {
         self.nodes.insert(id.clone(), plan_node);
         self.edges.push((id.clone(), current_id.to_string()));
         self.rebuild_plan_rows();
+        self.persist_plan();
         self.current_node = Some(id.clone());
         self.action = Some(Action::Lesson(id));
         self.screen = Screen::PlanView;
@@ -1279,6 +1313,14 @@ mod tests {
 
         assert!(app.known.contains("a"));
         assert_eq!(app.session_locked, vec!["A"]);
+        assert_eq!(app.screen, Screen::QualityMenu);
+        assert_eq!(app.pending_quality_node.as_deref(), Some("a"));
+
+        app.pick_quality(2);
+
+        let card = app.queue.cards.iter().find(|c| c.node == "a").unwrap();
+        assert_eq!(card.reps, 1);
+        assert_eq!(card.interval_days, 1);
         match &app.action {
             Some(Action::Lesson(id)) => assert_eq!(id, "b"),
             other => panic!("expected a lesson action for node b, got {other:?}"),

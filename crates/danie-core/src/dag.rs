@@ -27,6 +27,13 @@ pub struct PlanGraph {
     ids: HashMap<String, NodeIndex>,
 }
 
+/// JSON shape used by [`PlanGraph::to_json`] / [`PlanGraph::from_json`].
+#[derive(Debug, Serialize, Deserialize)]
+struct PlanData {
+    nodes: Vec<PlanNode>,
+    edges: Vec<[String; 2]>,
+}
+
 impl PlanGraph {
     /// Creates an empty plan graph.
     pub fn new() -> Self {
@@ -37,7 +44,7 @@ impl PlanGraph {
     pub fn add_node(&mut self, node: PlanNode) -> Result<()> {
         if self.ids.contains_key(&node.id) {
             return Err(CoreError::InvalidFormat(format!(
-                "nodo duplicado en el plan: {}",
+                "duplicate node id in plan: {}",
                 node.id
             )));
         }
@@ -70,6 +77,24 @@ impl PlanGraph {
     /// Number of nodes in the plan.
     pub fn node_count(&self) -> usize {
         self.graph.node_count()
+    }
+
+    /// Returns all nodes in insertion order.
+    pub fn nodes(&self) -> Vec<&PlanNode> {
+        self.graph.node_indices().map(|i| &self.graph[i]).collect()
+    }
+
+    /// Returns all prerequisite edges as `(before_id, after_id)` pairs.
+    pub fn edges(&self) -> Vec<(String, String)> {
+        self.graph
+            .edge_references()
+            .map(|e| {
+                (
+                    self.graph[e.source()].id.clone(),
+                    self.graph[e.target()].id.clone(),
+                )
+            })
+            .collect()
     }
 
     /// Returns the nodes in topological order (prerequisites first).
@@ -128,6 +153,43 @@ impl PlanGraph {
             ));
         }
         out
+    }
+
+    /// Serializes the graph (nodes in insertion order plus prerequisite edge
+    /// pairs `[before_id, after_id]`) as pretty JSON.
+    pub fn to_json(&self) -> Result<String> {
+        let nodes: Vec<PlanNode> = self
+            .graph
+            .node_indices()
+            .map(|i| self.graph[i].clone())
+            .collect();
+        let edges: Vec<[String; 2]> = self
+            .graph
+            .edge_references()
+            .map(|e| {
+                [
+                    self.graph[e.source()].id.clone(),
+                    self.graph[e.target()].id.clone(),
+                ]
+            })
+            .collect();
+        serde_json::to_string_pretty(&PlanData { nodes, edges }).map_err(CoreError::from)
+    }
+
+    /// Rebuilds a graph from JSON produced by [`PlanGraph::to_json`].
+    ///
+    /// All structural rules apply during reconstruction: duplicate ids,
+    /// unknown prereq references and cycles are rejected.
+    pub fn from_json(text: &str) -> Result<Self> {
+        let data: PlanData = serde_json::from_str(text)?;
+        let mut graph = PlanGraph::new();
+        for node in data.nodes {
+            graph.add_node(node)?;
+        }
+        for [before, after] in data.edges {
+            graph.add_prereq(&before, &after)?;
+        }
+        Ok(graph)
     }
 }
 
@@ -261,5 +323,32 @@ mod tests {
         let mermaid = g.to_mermaid();
         assert!(!mermaid.contains("\"decir\"\""));
         assert!(mermaid.contains("comillas[\"El arte de 'decir'\"]"));
+    }
+
+    #[test]
+    fn json_roundtrip_preserves_structure() {
+        let g = sample_graph();
+        let json = g.to_json().unwrap();
+        let back = PlanGraph::from_json(&json).unwrap();
+        assert_eq!(back.node_count(), g.node_count());
+        assert_eq!(
+            back.to_mermaid(),
+            "flowchart TD\n    variables[\"Variables\"]\n    tipos[\"Tipos\"]\n    funciones[\"Funciones\"]\n    closures[\"Closures\"]\n    variables --> funciones\n    funciones --> tipos\n    tipos --> closures\n"
+        );
+        let known: std::collections::HashSet<String> =
+            ["variables"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(back.next_unlocked(&known).unwrap().id, "funciones");
+    }
+
+    #[test]
+    fn from_json_rejects_unknown_edge_references() {
+        let json = r#"{"nodes":[{"id":"a","title":"A","summary":""}],"edges":[["ghost","a"]]}"#;
+        assert!(matches!(PlanGraph::from_json(json), Err(CoreError::NotFound(_))));
+    }
+
+    #[test]
+    fn from_json_rejects_cycles() {
+        let json = r#"{"nodes":[{"id":"a","title":"A","summary":""},{"id":"b","title":"B","summary":""}],"edges":[["a","b"],["b","a"]]}"#;
+        assert!(matches!(PlanGraph::from_json(json), Err(CoreError::Cycle)));
     }
 }

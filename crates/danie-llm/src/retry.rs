@@ -10,13 +10,28 @@ fn is_retryable(status: reqwest::StatusCode) -> bool {
     status.as_u16() == 429 || status.is_server_error()
 }
 
+/// Maximum characters kept from an error response body.
+const MAX_ERROR_BODY: usize = 200;
+
+fn summarize_body(body: &str) -> String {
+    let trimmed = body.trim();
+    if trimmed.to_ascii_lowercase().contains("<html") {
+        return "non-JSON response (HTML page)".to_string();
+    }
+    if trimmed.chars().count() <= MAX_ERROR_BODY {
+        return trimmed.to_string();
+    }
+    let cut: String = trimmed.chars().take(MAX_ERROR_BODY).collect();
+    format!("{cut}…")
+}
+
 async fn ensure_success(response: reqwest::Response) -> Result<reqwest::Response, LlmError> {
     let status = response.status();
     if status.is_success() {
         Ok(response)
     } else {
         let code = status.as_u16();
-        let body = response.text().await.unwrap_or_default();
+        let body = summarize_body(&response.text().await.unwrap_or_default());
         Err(LlmError::Status { code, body })
     }
 }

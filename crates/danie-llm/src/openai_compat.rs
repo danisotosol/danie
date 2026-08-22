@@ -43,7 +43,12 @@ impl LlmProvider for OpenAiCompatProvider {
                 "content": m.content,
             })).collect::<Vec<_>>(),
             "max_tokens": req.max_tokens,
-            "temperature": req.temperature,
+            // An f32 like 0.7 round-trips through JSON as
+            // 0.699999988079071, which strict upstream validators reject.
+            // Round in f64 so the wire value is clean.
+            "temperature": serde_json::Number::from_f64(
+                (req.temperature as f64 * 100.0).round() / 100.0,
+            ),
         });
 
         let response = send_with_retry(|| {

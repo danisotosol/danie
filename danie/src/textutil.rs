@@ -1,17 +1,31 @@
+use unicode_segmentation::UnicodeSegmentation;
+
 pub fn strip_inline_markdown(text: &str) -> String {
     text.replace("**", "").replace("__", "").replace('`', "")
 }
 
+fn grapheme_len(text: &str) -> usize {
+    text.graphemes(true).count()
+}
+
+/// Splits `word` after `width` grapheme clusters.
+fn split_at_graphemes(word: &str, width: usize) -> (&str, &str) {
+    let cut = word
+        .grapheme_indices(true)
+        .nth(width)
+        .map(|(i, _)| i)
+        .unwrap_or(word.len());
+    word.split_at(cut)
+}
+
 fn push_word(out: &mut Vec<String>, current: &mut String, word: &str, width: usize) {
     let mut rest = word;
-    while rest.chars().count() > width {
-        let cut = rest
-            .char_indices()
-            .nth(width)
-            .map(|(i, _)| i)
-            .unwrap_or(rest.len());
-        out.push(rest[..cut].to_string());
-        rest = &rest[cut..];
+    while grapheme_len(rest) > width {
+        let (head, tail) = split_at_graphemes(rest, width);
+        if !head.is_empty() {
+            out.push(head.to_string());
+        }
+        rest = tail;
     }
     if !rest.is_empty() {
         current.push_str(rest);
@@ -25,7 +39,7 @@ pub fn wrap_line(line: &str, width: usize) -> Vec<String> {
     for word in line.split_whitespace() {
         if current.is_empty() {
             push_word(&mut lines, &mut current, word, width);
-        } else if current.chars().count() + 1 + word.chars().count() <= width {
+        } else if grapheme_len(&current) + 1 + grapheme_len(word) <= width {
             current.push(' ');
             current.push_str(word);
         } else {
@@ -63,5 +77,21 @@ mod tests {
     #[test]
     fn strips_bold_and_code_markers() {
         assert_eq!(strip_inline_markdown("**bold** and `code`"), "bold and code");
+    }
+
+    #[test]
+    fn never_splits_grapheme_clusters() {
+        let combined = "e\u{301}";
+        let word = combined.repeat(4);
+        assert_eq!(wrap_line(&word, 2), vec![combined.repeat(2), combined.repeat(2)]);
+
+        let flag = "\u{1F1EA}\u{1F1F8}";
+        assert_eq!(wrap_line(&flag.repeat(3), 2), vec![flag.repeat(2), flag.to_string()]);
+    }
+
+    #[test]
+    fn ascii_behavior_is_unchanged() {
+        let long = "x".repeat(7);
+        assert_eq!(wrap_line(&long, 3), vec!["xxx", "xxx", "x"]);
     }
 }

@@ -5,7 +5,8 @@
 //! ```text
 //! <root>/
 //!   profile.md          learner profile
-//!   maps/<slug>.md       knowledge maps, one per goal
+//!   maps/<slug>.md      knowledge maps, one per goal
+//!   plans/<slug>.json   persisted plan DAGs, one per goal
 //!   sessions/<YYYYMMDD>-<slug>.md   session summaries
 //!   srs.json             spaced-repetition queue
 //! ```
@@ -13,6 +14,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::dag::PlanGraph;
 use crate::map::KnowledgeMap;
 use crate::profile::LearnerProfile;
 use crate::quiz::SrsQueue;
@@ -29,6 +31,7 @@ impl DanieStore {
     pub fn open(dir: &Path) -> Result<Self> {
         fs::create_dir_all(dir)?;
         fs::create_dir_all(dir.join("maps"))?;
+        fs::create_dir_all(dir.join("plans"))?;
         fs::create_dir_all(dir.join("sessions"))?;
         Ok(Self { root: dir.to_path_buf() })
     }
@@ -68,6 +71,24 @@ impl DanieStore {
     /// Lists map slugs found in `maps/`, sorted alphabetically.
     pub fn list_maps(&self) -> Vec<String> {
         markdown_stems(&self.root.join("maps"))
+    }
+
+    /// Saves the plan DAG to `plans/<goal_slug>.json` and returns the path
+    /// written.
+    pub fn save_plan(&self, goal_slug: &str, plan: &PlanGraph) -> Result<PathBuf> {
+        let path = self.root.join("plans").join(format!("{goal_slug}.json"));
+        fs::write(&path, plan.to_json()?)?;
+        Ok(path)
+    }
+
+    /// Loads the plan stored at `plans/<goal_slug>.json`; returns `None` when
+    /// no plan has been persisted for that goal yet.
+    pub fn load_plan(&self, goal_slug: &str) -> Result<Option<PlanGraph>> {
+        let path = self.root.join("plans").join(format!("{goal_slug}.json"));
+        if !path.exists() {
+            return Ok(None);
+        }
+        PlanGraph::from_json(&fs::read_to_string(path)?).map(Some)
     }
 
     /// Saves the session to `sessions/<YYYYMMDD>-<slug>.md` and returns the
@@ -189,7 +210,7 @@ mod tests {
         let (store, dir) = temp_store("profile");
         let loaded = store.load_profile().unwrap();
         assert_eq!(loaded, LearnerProfile::default());
-        assert_eq!(loaded.language, "es");
+        assert_eq!(loaded.language, "en");
 
         let mut profile = LearnerProfile::default();
         profile.solid_ground.push("python".into());
@@ -241,6 +262,31 @@ mod tests {
         assert!(name.ends_with("-basic-recursion.md"));
         assert_eq!(name.len(), "20260101-basic-recursion.md".len());
         assert_eq!(store.list_sessions(), vec![name.trim_end_matches(".md")]);
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn plan_roundtrip_and_missing_default() {
+        let (store, dir) = temp_store("plan");
+        assert!(store.load_plan("rust").unwrap().is_none());
+
+        let mut plan = crate::dag::PlanGraph::new();
+        for id in ["variables", "tipos"] {
+            plan.add_node(crate::dag::PlanNode {
+                id: id.into(),
+                title: id.to_string(),
+                summary: String::new(),
+            })
+            .unwrap();
+        }
+        plan.add_prereq("variables", "tipos").unwrap();
+
+        let path = store.save_plan("rust", &plan).unwrap();
+        assert!(path.ends_with("plans\\rust.json") || path.ends_with("plans/rust.json"));
+
+        let loaded = store.load_plan("rust").unwrap().unwrap();
+        assert_eq!(loaded.node_count(), 2);
 
         let _ = fs::remove_dir_all(dir);
     }

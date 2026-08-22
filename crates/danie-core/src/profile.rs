@@ -7,7 +7,7 @@ use crate::{CoreError, Result};
 /// Persistent description of the learner used to personalize tutoring.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LearnerProfile {
-    /// Teaching language tag used by the tutor; defaults to "es".
+    /// Teaching language tag used by the tutor; defaults to "en".
     pub language: String,
     /// Topics the learner already masters.
     pub solid_ground: Vec<String>,
@@ -24,7 +24,7 @@ pub struct LearnerProfile {
 impl Default for LearnerProfile {
     fn default() -> Self {
         Self {
-            language: "es".to_string(),
+            language: "en".to_string(),
             solid_ground: Vec::new(),
             goals: Vec::new(),
             pace_notes: None,
@@ -68,7 +68,7 @@ impl LearnerProfile {
     /// Parses markdown produced by [`LearnerProfile::to_markdown`].
     ///
     /// Missing optional sections yield `None`; a missing `- Language:` line
-    /// falls back to `"es"`.
+    /// falls back to `"en"`.
     pub fn from_markdown(text: &str) -> Result<Self> {
         if !text.lines().any(|l| l.trim() == "# Learner Profile") {
             return Err(CoreError::InvalidFormat(
@@ -81,7 +81,7 @@ impl LearnerProfile {
             .iter()
             .find_map(|l| l.strip_prefix("- Language: "))
             .map(|v| v.trim().to_string())
-            .unwrap_or_else(|| "es".to_string());
+            .unwrap_or_else(|| "en".to_string());
 
         let solid_ground = bullets_of_section(&lines, "## Solid ground");
         let goals = bullets_of_section(&lines, "## Goals");
@@ -168,10 +168,10 @@ mod tests {
     }
 
     #[test]
-    fn language_line_is_optional_and_defaults_to_spanish() {
+    fn language_line_is_optional_and_defaults_to_english() {
         let md = "# Learner Profile\n\n## Goals\n- rust\n";
         let back = LearnerProfile::from_markdown(md).unwrap();
-        assert_eq!(back.language, "es");
+        assert_eq!(back.language, "en");
         assert_eq!(back.goals, vec!["rust"]);
     }
 
