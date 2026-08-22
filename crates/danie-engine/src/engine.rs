@@ -65,7 +65,7 @@ where
     let mut request = ChatRequest::new(messages.clone());
     request.temperature = REQUEST_TEMPERATURE;
     let response = provider.chat(&request).await?;
-    match parse(extract_json(&response.text)) {
+    match parse_payload(&response.text, &parse) {
         Ok(value) => Ok(value),
         Err(first_error) => {
             warn!(error = %first_error, raw = %response.text, "model returned invalid JSON; retrying once");
@@ -77,9 +77,29 @@ where
                 ),
             ));
             let retry = provider.chat(&ChatRequest::new(messages)).await?;
-            parse(extract_json(&retry.text)).map_err(|error| {
+            parse_payload(&retry.text, &parse).map_err(|error| {
                 EngineError::Json(format!("{error}; last raw reply: {}", clip(&retry.text)))
             })
+        }
+    }
+}
+
+/// Parses a model reply as JSON, falling back to escaping raw control
+/// characters inside strings (a known failure mode of reasoning models that
+/// emit literal newlines in code snippets) when the strict parse fails.
+fn parse_payload<T, F>(text: &str, parse: &F) -> std::result::Result<T, String>
+where
+    F: Fn(&str) -> std::result::Result<T, String>,
+{
+    let extracted = extract_json(text);
+    match parse(extracted) {
+        Ok(value) => Ok(value),
+        Err(strict_error) => {
+            let sanitized = crate::protocol::sanitize_json_bare_control_chars(extracted);
+            if sanitized == extracted {
+                return Err(strict_error);
+            }
+            parse(&sanitized)
         }
     }
 }

@@ -106,6 +106,51 @@ pub fn extract_json(text: &str) -> &str {
     }
 }
 
+/// Escapes raw control characters (literal newlines, tabs, etc.) that appear
+/// unescaped inside JSON strings. Reasoning models sometimes emit real
+/// newlines inside string values (e.g. code snippets), which serde_json
+/// rejects. Only used as a fallback after a strict parse fails.
+pub fn sanitize_json_bare_control_chars(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() + 16);
+    let mut in_string = false;
+    let mut escaped = false;
+    for ch in text.chars() {
+        if in_string {
+            if escaped {
+                escaped = false;
+                out.push(ch);
+            } else {
+                match ch {
+                    '\\' => {
+                        escaped = true;
+                        out.push(ch);
+                    }
+                    '"' => {
+                        in_string = false;
+                        out.push(ch);
+                    }
+                    c if (c as u32) < 0x20 => match c {
+                        '\n' => out.push_str("\\n"),
+                        '\r' => out.push_str("\\r"),
+                        '\t' => out.push_str("\\t"),
+                        other => out.push_str(&format!("\\u{:04x}", other as u32)),
+                    },
+                    c => out.push(c),
+                }
+            }
+        } else {
+            match ch {
+                '"' => {
+                    in_string = true;
+                    out.push(ch);
+                }
+                c => out.push(c),
+            }
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,5 +206,37 @@ mod tests {
         }
         .validate()
         .is_err());
+    }
+}
+
+#[cfg(test)]
+mod sanitize_tests {
+    use super::*;
+
+    #[test]
+    fn escapes_literal_newlines_inside_strings() {
+        let raw = "{\"q\":\"line one\nline two\",\"n\":3}";
+        let fixed = sanitize_json_bare_control_chars(raw);
+        let value: serde_json::Value = serde_json::from_str(&fixed).unwrap();
+        assert_eq!(value["q"], "line one\nline two");
+        assert_eq!(value["n"], 3);
+    }
+
+    #[test]
+    fn keeps_escaped_sequences_working() {
+        // Already-valid JSON with escaped sequences must still parse identically.
+        let raw = "{\"a\":\"has \\\"quotes\\\" and \\n escapes\"}";
+        let fixed = sanitize_json_bare_control_chars(raw);
+        let original: serde_json::Value = serde_json::from_str(raw).unwrap();
+        let reparsed: serde_json::Value = serde_json::from_str(&fixed).unwrap();
+        assert_eq!(original, reparsed);
+    }
+
+    #[test]
+    fn escapes_tabs_and_other_controls() {
+        let raw = "{\"code\":\"\tlet x;\u{1}\"}";
+        let fixed = sanitize_json_bare_control_chars(raw);
+        let value: serde_json::Value = serde_json::from_str(&fixed).unwrap();
+        assert!(value["code"].as_str().unwrap().contains('\t'));
     }
 }
