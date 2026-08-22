@@ -125,7 +125,11 @@ fn free_text_of_section(lines: &[&str], heading: &str) -> Option<String> {
     match section_range(lines, heading) {
         Some(range) => {
             let text = lines[range].join("\n").trim().to_string();
-            if text.is_empty() { None } else { Some(text) }
+            if text.is_empty() {
+                None
+            } else {
+                Some(text)
+            }
         }
         None => None,
     }

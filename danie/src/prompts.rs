@@ -39,7 +39,10 @@ pub fn status_digest(map: &KnowledgeMap) -> String {
         } else {
             format!(" ({})", strand.evidence)
         };
-        out.push_str(&format!("\n- {}: {}{}", strand.name, strand.status, evidence));
+        out.push_str(&format!(
+            "\n- {}: {}{}",
+            strand.name, strand.status, evidence
+        ));
     }
     out
 }
@@ -170,9 +173,8 @@ pub fn review_system(language: &str) -> String {
 }
 
 pub fn review_user(node_id: &str, context: Option<&str>, profile: &LearnerProfile) -> String {
-    let context = context.unwrap_or(
-        "No prior context available; write a general recall question about this node.",
-    );
+    let context = context
+        .unwrap_or("No prior context available; write a general recall question about this node.");
     format!(
         "Node: {node_id}\nContext: {context}\n\n{}\n\nProduce the review question now.",
         profile_digest(profile)

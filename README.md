@@ -79,7 +79,7 @@ Everything is plain markdown/JSON — point Obsidian at `.danie/` if you like.
 - The loop engine is fully headless: rendering never touches model output.
 - Model responses are strict JSON with fence-stripping and exactly one
   corrective retry before failing cleanly.
-- Teaching language follows `profile.md`'s `Language:` line (default `es`);
+- Teaching language follows `profile.md`'s `Language:` line (default `en`);
   UI chrome is English.
 - Method credit: Eero Alvar's *How I Use AI to Learn Things*; memory design
   inspired by Nous Research's Hermes Agent (episodic/semantic/procedural).

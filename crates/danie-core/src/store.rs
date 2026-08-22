@@ -33,7 +33,9 @@ impl DanieStore {
         fs::create_dir_all(dir.join("maps"))?;
         fs::create_dir_all(dir.join("plans"))?;
         fs::create_dir_all(dir.join("sessions"))?;
-        Ok(Self { root: dir.to_path_buf() })
+        Ok(Self {
+            root: dir.to_path_buf(),
+        })
     }
 
     /// Loads `perfil.md`; returns the default profile when missing.
@@ -187,18 +189,18 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("system clock")
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!(
-            "danie-core-{}-{}-{nanos}",
-            tag,
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("danie-core-{}-{}-{nanos}", tag, std::process::id()));
         let store = DanieStore::open(&dir).unwrap();
         (store, dir)
     }
 
     #[test]
     fn slugify_folds_accents_and_collapses_separators() {
-        assert_eq!(slugify("Árbol Genealógico Ñandú"), "arbol-genealogico-nandu");
+        assert_eq!(
+            slugify("Árbol Genealógico Ñandú"),
+            "arbol-genealogico-nandu"
+        );
         assert_eq!(slugify("Hola, Mundo!!!"), "hola-mundo");
         assert_eq!(slugify("  --A  B--  "), "a-b");
         assert_eq!(slugify("straße"), "strasse");
@@ -226,7 +228,11 @@ mod tests {
     fn map_roundtrip_slug_and_listing() {
         let (store, dir) = temp_store("map");
         let mut map = KnowledgeMap::new("Rust programming!");
-        map.upsert_strand("variables", crate::strand::StrandStatus::Known, "clear mastery");
+        map.upsert_strand(
+            "variables",
+            crate::strand::StrandStatus::Known,
+            "clear mastery",
+        );
         let path = store.save_map(&map).unwrap();
         assert_eq!(
             path.file_name().unwrap().to_str().unwrap(),

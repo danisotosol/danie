@@ -17,9 +17,7 @@ use cli::{Cli, Command, MapCommand};
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
-    let store_dir = cli
-        .store
-        .unwrap_or_else(|| PathBuf::from(".danie"));
+    let store_dir = cli.store.unwrap_or_else(|| PathBuf::from(".danie"));
     let rt = tokio::runtime::Runtime::new().expect("failed to start the tokio runtime");
 
     match cli.command {
@@ -54,7 +52,10 @@ fn run_map(cmd: MapCommand, store_dir: &Path) -> ExitCode {
     let store = match DanieStore::open(store_dir) {
         Ok(store) => store,
         Err(error) => {
-            eprintln!("error: could not open the store at {}: {error}", store_dir.display());
+            eprintln!(
+                "error: could not open the store at {}: {error}",
+                store_dir.display()
+            );
             return ExitCode::FAILURE;
         }
     };

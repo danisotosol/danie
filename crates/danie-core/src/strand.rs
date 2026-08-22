@@ -70,10 +70,22 @@ mod tests {
 
     #[test]
     fn parse_is_case_insensitive_and_trims() {
-        assert_eq!("KNOWN".parse::<StrandStatus>().unwrap(), StrandStatus::Known);
-        assert_eq!("  Edge ".parse::<StrandStatus>().unwrap(), StrandStatus::Edge);
-        assert_eq!("unknown".parse::<StrandStatus>().unwrap(), StrandStatus::Unknown);
-        assert_eq!("Blocked".parse::<StrandStatus>().unwrap(), StrandStatus::Blocked);
+        assert_eq!(
+            "KNOWN".parse::<StrandStatus>().unwrap(),
+            StrandStatus::Known
+        );
+        assert_eq!(
+            "  Edge ".parse::<StrandStatus>().unwrap(),
+            StrandStatus::Edge
+        );
+        assert_eq!(
+            "unknown".parse::<StrandStatus>().unwrap(),
+            StrandStatus::Unknown
+        );
+        assert_eq!(
+            "Blocked".parse::<StrandStatus>().unwrap(),
+            StrandStatus::Blocked
+        );
     }
 
     #[test]

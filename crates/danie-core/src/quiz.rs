@@ -127,7 +127,7 @@ impl QuizQuestion {
     pub fn validate(&self) -> Result<()> {
         if self.correct_index >= self.options.len() {
             return Err(CoreError::InvalidFormat(format!(
-                "índice de respuesta correcta fuera de rango: {} sobre {} opciones",
+                "correct answer index out of range: {} of {} options",
                 self.correct_index,
                 self.options.len()
             )));
@@ -221,7 +221,10 @@ mod tests {
             explanation: "fmap applies the function".into(),
         };
         assert!(ok.validate().is_ok());
-        let bad = QuizQuestion { correct_index: 2, ..ok };
+        let bad = QuizQuestion {
+            correct_index: 2,
+            ..ok
+        };
         assert!(matches!(bad.validate(), Err(CoreError::InvalidFormat(_))));
     }
 }

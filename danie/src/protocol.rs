@@ -95,7 +95,11 @@ pub fn extract_json(text: &str) -> &str {
         Some(i) => i,
         None => return trimmed,
     };
-    let close = if trimmed.as_bytes()[start] == b'{' { '}' } else { ']' };
+    let close = if trimmed.as_bytes()[start] == b'{' {
+        '}'
+    } else {
+        ']'
+    };
     match trimmed.rfind(close) {
         Some(end) if end > start => &trimmed[start..=end],
         _ => trimmed,
@@ -138,7 +142,11 @@ mod tests {
             correct_index: 0,
         };
         assert!(q.validate());
-        assert!(!ProbeQuestionDto { correct_index: 2, ..q }.validate());
+        assert!(!ProbeQuestionDto {
+            correct_index: 2,
+            ..q
+        }
+        .validate());
 
         let quiz = QuizDto {
             prompt: "p".into(),
@@ -147,6 +155,11 @@ mod tests {
             explanation: "e".into(),
         };
         assert!(quiz.validate().is_ok());
-        assert!(QuizDto { correct_index: 9, ..quiz }.validate().is_err());
+        assert!(QuizDto {
+            correct_index: 9,
+            ..quiz
+        }
+        .validate()
+        .is_err());
     }
 }

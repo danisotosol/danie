@@ -25,12 +25,18 @@ pub struct Cli {
 pub enum Command {
     #[command(about = "Start or resume a tutoring session (TUI)")]
     Teach {
-        #[arg(value_name = "TOPIC", help = "Topic to study; asked interactively when omitted")]
+        #[arg(
+            value_name = "TOPIC",
+            help = "Topic to study; asked interactively when omitted"
+        )]
         topic: Option<String>,
     },
     #[command(about = "Run only the diagnostic probe (TUI)")]
     Probe {
-        #[arg(value_name = "TOPIC", help = "Topic to probe; asked interactively when omitted")]
+        #[arg(
+            value_name = "TOPIC",
+            help = "Topic to probe; asked interactively when omitted"
+        )]
         topic: Option<String>,
     },
     #[command(about = "Spaced-repetition review of due cards (TUI)")]

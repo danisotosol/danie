@@ -275,8 +275,7 @@ impl App {
                     }
                     Ok(None) => {}
                     Err(error) => {
-                        self.error =
-                            Some(format!("Could not load the stored plan: {error}"));
+                        self.error = Some(format!("Could not load the stored plan: {error}"));
                     }
                 }
                 self.screen = Screen::Dashboard;
@@ -289,7 +288,12 @@ impl App {
     }
 
     fn init_review(&mut self) {
-        let due: Vec<SrsCard> = self.queue.due_cards(Utc::now()).into_iter().cloned().collect();
+        let due: Vec<SrsCard> = self
+            .queue
+            .due_cards(Utc::now())
+            .into_iter()
+            .cloned()
+            .collect();
         if due.is_empty() {
             self.screen = Screen::ReviewEmpty;
         } else {
@@ -354,9 +358,7 @@ impl App {
     fn persist_queue(&mut self) {
         match self.store.save_queue(&self.queue) {
             Ok(()) => self.note_path(self.store_dir.join("srs.json")),
-            Err(error) => {
-                self.error = Some(format!("Failed to save the review schedule: {error}"))
-            }
+            Err(error) => self.error = Some(format!("Failed to save the review schedule: {error}")),
         }
     }
 
@@ -399,9 +401,7 @@ impl App {
         };
         match self.store.save_session(&summary) {
             Ok(path) => self.note_path(path),
-            Err(error) => {
-                self.error = Some(format!("Failed to save the session summary: {error}"))
-            }
+            Err(error) => self.error = Some(format!("Failed to save the session summary: {error}")),
         }
         self.summary_saved = true;
         self.screen = Screen::Done;
@@ -560,10 +560,7 @@ impl App {
     }
 
     fn on_key_any_exit(&mut self, key: KeyEvent) {
-        if matches!(
-            key.code,
-            KeyCode::Enter | KeyCode::Esc | KeyCode::Char('q')
-        ) {
+        if matches!(key.code, KeyCode::Enter | KeyCode::Esc | KeyCode::Char('q')) {
             self.quit = true;
         }
     }
@@ -835,7 +832,12 @@ impl App {
         };
         let quality = quality_value(choice);
         self.queue.upsert_card(node_id.clone());
-        if let Some(card) = self.queue.cards.iter_mut().find(|card| card.node == node_id) {
+        if let Some(card) = self
+            .queue
+            .cards
+            .iter_mut()
+            .find(|card| card.node == node_id)
+        {
             if let Err(error) = card.review(quality) {
                 self.error = Some(format!("Could not schedule the review card: {error}"));
                 return;
@@ -851,12 +853,8 @@ impl App {
             return;
         }
         match key.code {
-            KeyCode::Up | KeyCode::Char('k') => {
-                self.move_selection(-1, WRONG_MENU_OPTIONS.len())
-            }
-            KeyCode::Down | KeyCode::Char('j') => {
-                self.move_selection(1, WRONG_MENU_OPTIONS.len())
-            }
+            KeyCode::Up | KeyCode::Char('k') => self.move_selection(-1, WRONG_MENU_OPTIONS.len()),
+            KeyCode::Down | KeyCode::Char('j') => self.move_selection(1, WRONG_MENU_OPTIONS.len()),
             KeyCode::Enter => self.choose_wrong_action(self.selected),
             KeyCode::Esc => self.screen = Screen::Reveal,
             _ => {}
@@ -984,7 +982,10 @@ impl App {
 
     fn apply_review_quality(&mut self, choice: usize) {
         let quality = quality_value(choice);
-        let Some(node) = self.review_due.get(self.review_index).map(|c| c.node.clone())
+        let Some(node) = self
+            .review_due
+            .get(self.review_index)
+            .map(|c| c.node.clone())
         else {
             return;
         };

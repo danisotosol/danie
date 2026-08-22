@@ -255,8 +255,8 @@ impl KnowledgeMap {
             }
         }
 
-        let goal = goal
-            .ok_or_else(|| CoreError::InvalidFormat("missing '# Map — <goal>' header".into()))?;
+        let goal =
+            goal.ok_or_else(|| CoreError::InvalidFormat("missing '# Map — <goal>' header".into()))?;
         let updated =
             updated.ok_or_else(|| CoreError::InvalidFormat("missing 'Updated:' line".into()))?;
         Ok(Self {

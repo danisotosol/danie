@@ -36,15 +36,14 @@ pub fn parse_skill_md(text: &str) -> Result<(SkillFrontmatter, String)> {
         }
         offset += line.len();
     }
-    let (close_offset, close_len) = close
-        .ok_or_else(|| CoreError::InvalidFormat("unclosed frontmatter ('---')".into()))?;
+    let (close_offset, close_len) =
+        close.ok_or_else(|| CoreError::InvalidFormat("unclosed frontmatter ('---')".into()))?;
 
     let yaml_text = &after_open[..close_offset];
     let body = &after_open[close_offset + close_len..];
 
-    let fm: SkillFrontmatter = serde_yaml::from_str(yaml_text).map_err(|e| {
-        CoreError::InvalidFormat(format!("invalid frontmatter yaml: {e}"))
-    })?;
+    let fm: SkillFrontmatter = serde_yaml::from_str(yaml_text)
+        .map_err(|e| CoreError::InvalidFormat(format!("invalid frontmatter yaml: {e}")))?;
     if fm.name.trim().is_empty() || fm.description.trim().is_empty() {
         return Err(CoreError::InvalidFormat(
             "name and description are required".into(),

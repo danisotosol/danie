@@ -248,7 +248,14 @@ pub async fn generate_lesson(
     chat_json(
         provider,
         crate::prompts::teach_system(&profile.language),
-        crate::prompts::teach_user(goal, &node.title, &node.summary, prereq_titles, map, profile),
+        crate::prompts::teach_user(
+            goal,
+            &node.title,
+            &node.summary,
+            prereq_titles,
+            map,
+            profile,
+        ),
         |text| {
             let lesson: TeachLessonDto = serde_json::from_str(text).map_err(|e| e.to_string())?;
             lesson.validate()?;
@@ -268,7 +275,13 @@ pub async fn propose_prerequisite(
     chat_json(
         provider,
         crate::prompts::prereq_system(&profile.language),
-        crate::prompts::prereq_user(goal, &current.title, &current.summary, existing_ids, profile),
+        crate::prompts::prereq_user(
+            goal,
+            &current.title,
+            &current.summary,
+            existing_ids,
+            profile,
+        ),
         |text| {
             let dto: PrereqDto = serde_json::from_str(text).map_err(|e| e.to_string())?;
             if dto.id.trim().is_empty() || dto.title.trim().is_empty() {
@@ -362,7 +375,11 @@ mod tests {
         ProbeQuestionDto {
             strand: strand.to_string(),
             question: "Which one stores a value?".to_string(),
-            options: vec!["a box".to_string(), "a shoe".to_string(), "I don't know".to_string()],
+            options: vec![
+                "a box".to_string(),
+                "a shoe".to_string(),
+                "I don't know".to_string(),
+            ],
             correct_index,
         }
     }
@@ -399,7 +416,8 @@ mod tests {
 
     #[tokio::test]
     async fn lesson_parsing_retries_once_then_succeeds() {
-        let bad = "Sure! Here is your lesson:\n{\"title\":\"Variables\",\"body_md\":\"short body\"}";
+        let bad =
+            "Sure! Here is your lesson:\n{\"title\":\"Variables\",\"body_md\":\"short body\"}";
         let good = "{\"title\":\"Variables\",\"body_md\":\"body text\",\"quiz\":{\"prompt\":\"pick\",\"options\":[\"a\",\"b\",\"c\",\"d\"],\"correct_index\":2,\"explanation\":\"c wins\"}}";
         let mock = MockProvider::ok(&[bad, good]);
         let node = PlanNode {
@@ -410,10 +428,9 @@ mod tests {
         let map = KnowledgeMap::new("Rust basics");
         let profile = LearnerProfile::default();
 
-        let lesson =
-            generate_lesson(&mock, "Rust basics", &node, &[], &map, &profile)
-                .await
-                .unwrap();
+        let lesson = generate_lesson(&mock, "Rust basics", &node, &[], &map, &profile)
+            .await
+            .unwrap();
 
         assert_eq!(lesson.title, "Variables");
         assert_eq!(lesson.quiz.correct_index, 2);
@@ -473,9 +490,10 @@ mod tests {
         let bundle = build_plan(&dto).unwrap();
         assert_eq!(bundle.graph.node_count(), 3);
         assert_eq!(bundle.edges.len(), 2);
-        assert_eq!(bundle.nodes.keys().cloned().collect::<Vec<_>>(), vec![
-            "functions", "types", "variables"
-        ]);
+        assert_eq!(
+            bundle.nodes.keys().cloned().collect::<Vec<_>>(),
+            vec!["functions", "types", "variables"]
+        );
 
         let none_known: HashSet<String> = HashSet::new();
         assert_eq!(

@@ -68,25 +68,35 @@ mod tests {
 
     #[test]
     fn wraps_on_word_boundaries_and_keeps_blank_lines() {
-        assert_eq!(wrap_line("hello brave new world", 11), vec![
-            "hello brave", "new world"
-        ]);
+        assert_eq!(
+            wrap_line("hello brave new world", 11),
+            vec!["hello brave", "new world"]
+        );
         assert_eq!(wrap_text("a\n\nb", 10), vec!["a", "", "b"]);
     }
 
     #[test]
     fn strips_bold_and_code_markers() {
-        assert_eq!(strip_inline_markdown("**bold** and `code`"), "bold and code");
+        assert_eq!(
+            strip_inline_markdown("**bold** and `code`"),
+            "bold and code"
+        );
     }
 
     #[test]
     fn never_splits_grapheme_clusters() {
         let combined = "e\u{301}";
         let word = combined.repeat(4);
-        assert_eq!(wrap_line(&word, 2), vec![combined.repeat(2), combined.repeat(2)]);
+        assert_eq!(
+            wrap_line(&word, 2),
+            vec![combined.repeat(2), combined.repeat(2)]
+        );
 
         let flag = "\u{1F1EA}\u{1F1F8}";
-        assert_eq!(wrap_line(&flag.repeat(3), 2), vec![flag.repeat(2), flag.to_string()]);
+        assert_eq!(
+            wrap_line(&flag.repeat(3), 2),
+            vec![flag.repeat(2), flag.to_string()]
+        );
     }
 
     #[test]

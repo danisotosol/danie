@@ -361,7 +361,13 @@ fn render_dashboard(f: &mut Frame, app: &App, area: Rect) {
                         format!("  {:8}", status.to_string()),
                         Style::default().fg(status_color(status)),
                     ),
-                    Span::raw(strands.iter().map(|s| s.name.clone()).collect::<Vec<_>>().join(", ")),
+                    Span::raw(
+                        strands
+                            .iter()
+                            .map(|s| s.name.clone())
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    ),
                 ]));
             }
         }
@@ -438,7 +444,10 @@ fn render_plan_view(f: &mut Frame, app: &App, area: Rect) {
     let mut lines = Vec::new();
     if let Some(current) = &app.current_node {
         if let Some(node) = app.nodes.get(current) {
-            lines.push(Line::from(vec![Span::raw("Up next: "), accent(node.title.clone())]));
+            lines.push(Line::from(vec![
+                Span::raw("Up next: "),
+                accent(node.title.clone()),
+            ]));
             lines.push(Line::from(""));
         }
     }
@@ -520,12 +529,18 @@ fn render_teach_quiz(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(wrapped_paragraph(lines, inner, 0), inner);
 }
 
-fn render_reveal_content(quiz: &crate::protocol::QuizDto, reveal: &super::RevealInfo, width: usize) -> Vec<Line<'static>> {
+fn render_reveal_content(
+    quiz: &crate::protocol::QuizDto,
+    reveal: &super::RevealInfo,
+    width: usize,
+) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
     if reveal.correct {
         lines.push(Line::from(Span::styled(
             "Correct!",
-            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
         )));
     } else {
         lines.push(Line::from(Span::styled(
@@ -534,14 +549,17 @@ fn render_reveal_content(quiz: &crate::protocol::QuizDto, reveal: &super::Reveal
         )));
     }
     lines.push(Line::from(""));
-    let chosen_text = quiz
-        .options
-        .get(reveal.chosen)
-        .cloned()
-        .unwrap_or_default();
+    let chosen_text = quiz.options.get(reveal.chosen).cloned().unwrap_or_default();
     lines.push(Line::from(vec![
         Span::raw("Your answer: "),
-        Span::styled(chosen_text, Style::default().fg(if reveal.correct { Color::Green } else { Color::Red })),
+        Span::styled(
+            chosen_text,
+            Style::default().fg(if reveal.correct {
+                Color::Green
+            } else {
+                Color::Red
+            }),
+        ),
     ]));
     let correct_text = quiz
         .options
@@ -776,8 +794,10 @@ fn render_error(f: &mut Frame, area: Rect, message: &str) {
     let inner = block.inner(popup);
     f.render_widget(block, popup);
     let width = inner.width.saturating_sub(2) as usize;
-    let mut lines: Vec<Line<'static>> =
-        wrap_text(message, width.max(10)).into_iter().map(Line::from).collect();
+    let mut lines: Vec<Line<'static>> = wrap_text(message, width.max(10))
+        .into_iter()
+        .map(Line::from)
+        .collect();
     lines.push(Line::from(""));
     lines.push(Line::from(dim("press any key to continue")));
     f.render_widget(Paragraph::new(Text::from(lines)), inner);

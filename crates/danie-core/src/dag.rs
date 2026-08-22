@@ -120,7 +120,10 @@ impl PlanGraph {
     /// Picks the next node to teach: scanning in topological order, the first
     /// node whose prerequisites are all in `known_ids` and whose own id is not
     /// known yet.
-    pub fn next_unlocked(&self, known_ids: &std::collections::HashSet<String>) -> Option<&PlanNode> {
+    pub fn next_unlocked(
+        &self,
+        known_ids: &std::collections::HashSet<String>,
+    ) -> Option<&PlanNode> {
         for node in self.topo_order().ok()? {
             let idx = self.ids[&node.id];
             let prereqs_satisfied = self
@@ -260,7 +263,10 @@ mod tests {
     fn cycle_detection_rolls_back_the_edge() {
         let mut g = sample_graph();
         assert!(g.add_prereq("closures", "variables").is_err());
-        assert!(matches!(g.add_prereq("closures", "variables"), Err(CoreError::Cycle)));
+        assert!(matches!(
+            g.add_prereq("closures", "variables"),
+            Err(CoreError::Cycle)
+        ));
         assert_eq!(g.node_count(), 4);
         assert!(g.topo_order().is_ok());
     }
@@ -279,10 +285,8 @@ mod tests {
     #[test]
     fn next_unlocked_skips_locked_nodes_in_topological_order() {
         let g = sample_graph();
-        let known: std::collections::HashSet<String> = ["variables"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
+        let known: std::collections::HashSet<String> =
+            ["variables"].iter().map(|s| s.to_string()).collect();
         let next = g.next_unlocked(&known).unwrap();
         assert_eq!(next.id, "funciones");
 
@@ -292,10 +296,11 @@ mod tests {
             .collect();
         assert_eq!(g.next_unlocked(&more).unwrap().id, "tipos");
 
-        let all: std::collections::HashSet<String> = ["variables", "tipos", "funciones", "closures"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
+        let all: std::collections::HashSet<String> =
+            ["variables", "tipos", "funciones", "closures"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
         assert!(g.next_unlocked(&all).is_none());
     }
 
@@ -343,7 +348,10 @@ mod tests {
     #[test]
     fn from_json_rejects_unknown_edge_references() {
         let json = r#"{"nodes":[{"id":"a","title":"A","summary":""}],"edges":[["ghost","a"]]}"#;
-        assert!(matches!(PlanGraph::from_json(json), Err(CoreError::NotFound(_))));
+        assert!(matches!(
+            PlanGraph::from_json(json),
+            Err(CoreError::NotFound(_))
+        ));
     }
 
     #[test]
