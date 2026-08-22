@@ -1,0 +1,28 @@
+[package]
+name = "danie"
+description = "One-to-one AI tutor in your terminal: probe, plan a DAG, teach one node at a time"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "danie"
+path = "src/main.rs"
+
+[dependencies]
+danie-core = { path = "../crates/danie-core" }
+danie-llm = { path = "../crates/danie-llm" }
+clap = { version = "4", features = ["derive"] }
+ratatui = "0.29"
+crossterm = "0.28"
+tokio.workspace = true
+anyhow = "1"
+chrono = "0.4"
+serde.workspace = true
+serde_json.workspace = true
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+async-trait.workspace = true

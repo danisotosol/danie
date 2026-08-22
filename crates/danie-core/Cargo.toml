@@ -1,0 +1,16 @@
+[package]
+name = "danie-core"
+description = "Domain models, .danie/ storage and learning-loop primitives for the danie CLI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+chrono = { version = "0.4", features = ["serde"] }
+serde_yaml = "0.9"
+petgraph = "0.6"
+pulldown-cmark = "0.12"

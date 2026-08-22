@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = ["crates/danie-core", "crates/danie-llm", "danie"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["danie"]
+repository = "https://github.com/danie/danie"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+async-trait = "0.1"

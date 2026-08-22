@@ -1,0 +1,28 @@
+# danie configuration
+# Location:
+#   Windows:  %APPDATA%\danie\config.toml
+#   Linux/macOS: ~/.config/danie/config.toml
+
+[default]
+# "anthropic" or "openai-compat"
+provider = "anthropic"
+model = "claude-sonnet-4-5"
+
+[providers.anthropic]
+# Env var holding your key (never put keys in this file)
+api_key_env = "ANTHROPIC_API_KEY"
+# base_url = "https://api.anthropic.com"     # optional proxy/gateway override
+
+[providers.openai_compat]
+# Works with OpenAI, DeepSeek, Ollama, LM Studio, vLLM...
+base_url = "https://api.openai.com/v1"
+# api_key_env = "OPENAI_API_KEY"             # optional; omit for local servers
+# model = "gpt-4o"                           # overrides [default].model when selected
+
+# --- Free local example (Ollama) -------------------------------------------
+# [default]
+# provider = "openai-compat"
+# model = "llama3.1"
+#
+# [providers.openai_compat]
+# base_url = "http://localhost:11434/v1"
