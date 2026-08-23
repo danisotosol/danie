@@ -65,29 +65,73 @@ impl LearnerProfile {
         out
     }
 
-    /// Parses markdown produced by [`LearnerProfile::to_markdown`].
+    /// Parses learner-profile markdown.
     ///
-    /// Missing optional sections yield `None`; a missing `- Language:` line
-    /// falls back to `"en"`.
+    /// Accepts the canonical format written by [`LearnerProfile::to_markdown`]
+    /// plus common real-world variants: legacy Spanish headers
+    /// (`# Perfil del aprendiz`, `## Terreno sólido`, …), free-form document
+    /// titles (`# Learner profile for danie`) and bare `Key: value` lines
+    /// without the leading dash.
     pub fn from_markdown(text: &str) -> Result<Self> {
-        if !text.lines().any(|l| l.trim() == "# Learner Profile") {
+        let lines: Vec<&str> = text.lines().collect();
+
+        let header_ok = lines.iter().any(|l| {
+            let trimmed = l.trim();
+            trimmed.starts_with('#') && {
+                let inner = trimmed.trim_start_matches('#').trim().to_ascii_lowercase();
+                inner.contains("learner") || inner.contains("perfil")
+            }
+        });
+
+        let language_found = key_line(
+            &lines,
+            &["- Language:", "- Idioma:", "Language:", "Idioma:"],
+        )
+        .filter(|v| !v.is_empty());
+        let language = language_found
+            .clone()
+            .unwrap_or_else(|| "en".to_string());
+
+        let mut solid_ground =
+            section_bullets(&lines, &["## Solid ground", "## Terreno sólido"]);
+        if solid_ground.is_empty() {
+            if let Some(value) = key_line(&lines, &["Solid ground:", "Terreno sólido:"]) {
+                if !value.is_empty() {
+                    solid_ground.push(value);
+                }
+            }
+        }
+
+        let mut goals = section_bullets(&lines, &["## Goals", "## Metas"]);
+        if goals.is_empty() {
+            if let Some(value) = key_line(&lines, &["Goals:", "Metas:"]) {
+                if !value.is_empty() {
+                    goals.push(value);
+                }
+            }
+        }
+
+        let pace_notes = section_text(&lines, &["## Pace", "## Ritmo"])
+            .or_else(|| key_line(&lines, &["Pace notes:", "Pace:", "Ritmo:"]))
+            .filter(|v| !v.is_empty());
+        let struggle_prefs = section_text(&lines, &["## Struggle", "## Lucha"])
+            .or_else(|| key_line(&lines, &["Struggle notes:", "Struggle:", "Lucha:"]))
+            .filter(|v| !v.is_empty());
+        let voice_prefs = section_text(&lines, &["## Voice", "## Voz"])
+            .or_else(|| key_line(&lines, &["Voice notes:", "Voice:", "Voz:"]))
+            .filter(|v| !v.is_empty());
+
+        let recognizable = language_found.is_some()
+            || !solid_ground.is_empty()
+            || !goals.is_empty()
+            || pace_notes.is_some()
+            || struggle_prefs.is_some()
+            || voice_prefs.is_some();
+        if !header_ok && !recognizable {
             return Err(CoreError::InvalidFormat(
                 "missing '# Learner Profile' header".into(),
             ));
         }
-        let lines: Vec<&str> = text.lines().collect();
-
-        let language = lines
-            .iter()
-            .find_map(|l| l.strip_prefix("- Language: "))
-            .map(|v| v.trim().to_string())
-            .unwrap_or_else(|| "en".to_string());
-
-        let solid_ground = bullets_of_section(&lines, "## Solid ground");
-        let goals = bullets_of_section(&lines, "## Goals");
-        let pace_notes = free_text_of_section(&lines, "## Pace");
-        let struggle_prefs = free_text_of_section(&lines, "## Struggle");
-        let voice_prefs = free_text_of_section(&lines, "## Voice");
 
         Ok(Self {
             language,
@@ -100,39 +144,66 @@ impl LearnerProfile {
     }
 }
 
-fn section_range(lines: &[&str], heading: &str) -> Option<std::ops::Range<usize>> {
-    let start = lines.iter().position(|l| l.trim() == heading)? + 1;
+fn heading_matches(line: &str, headings: &[&str]) -> bool {
+    let trimmed = line.trim();
+    headings
+        .iter()
+        .any(|heading| trimmed.eq_ignore_ascii_case(heading.trim()))
+}
+
+/// Returns the value of the first `Key: value` (or `- Key: value`) line
+/// matching any of `keys`. Matching is ASCII-case-insensitive and never
+/// panics on multi-byte characters.
+fn key_line(lines: &[&str], keys: &[&str]) -> Option<String> {
+    fn starts_with_ignore_case(hay: &str, needle: &str) -> bool {
+        let (h, n) = (hay.as_bytes(), needle.as_bytes());
+        h.len() >= n.len()
+            && h.iter()
+                .zip(n)
+                .all(|(a, b)| a.eq_ignore_ascii_case(b))
+    }
+    for line in lines {
+        let trimmed = line.trim();
+        let without_dash = trimmed.strip_prefix("- ").unwrap_or(trimmed);
+        for key in keys {
+            if starts_with_ignore_case(without_dash, key) {
+                return Some(without_dash[key.len()..].trim().to_string());
+            }
+        }
+    }
+    None
+}
+
+fn section_bullets(lines: &[&str], headings: &[&str]) -> Vec<String> {
+    match section_range(lines, headings) {
+        Some(range) => lines[range]
+            .iter()
+            .filter_map(|l| l.trim().strip_prefix("- "))
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect(),
+        None => Vec::new(),
+    }
+}
+
+fn section_text(lines: &[&str], headings: &[&str]) -> Option<String> {
+    match section_range(lines, headings) {
+        Some(range) => {
+            let text = lines[range].join("\n").trim().to_string();
+            if text.is_empty() { None } else { Some(text) }
+        }
+        None => None,
+    }
+}
+
+fn section_range(lines: &[&str], headings: &[&str]) -> Option<std::ops::Range<usize>> {
+    let start = lines.iter().position(|l| heading_matches(l, headings))? + 1;
     let end = lines[start..]
         .iter()
         .position(|l| l.trim_start().starts_with("## "))
         .map(|off| start + off)
         .unwrap_or(lines.len());
     Some(start..end)
-}
-
-fn bullets_of_section(lines: &[&str], heading: &str) -> Vec<String> {
-    match section_range(lines, heading) {
-        Some(range) => lines[range]
-            .iter()
-            .filter_map(|l| l.trim().strip_prefix("- "))
-            .map(str::to_string)
-            .collect(),
-        None => Vec::new(),
-    }
-}
-
-fn free_text_of_section(lines: &[&str], heading: &str) -> Option<String> {
-    match section_range(lines, heading) {
-        Some(range) => {
-            let text = lines[range].join("\n").trim().to_string();
-            if text.is_empty() {
-                None
-            } else {
-                Some(text)
-            }
-        }
-        None => None,
-    }
 }
 
 #[cfg(test)]
@@ -182,5 +253,28 @@ mod tests {
     #[test]
     fn missing_title_is_invalid_format() {
         assert!(LearnerProfile::from_markdown("no header here").is_err());
+    }
+
+    #[test]
+    fn parses_ad_hoc_profile_without_sections() {
+        let md = "# Learner profile for danie\nLanguage: en\nSolid ground: general programming curiosity\nGoals: learn Rust and AI development\nPace notes: prefers short explanations with a check question\n";
+        let back = LearnerProfile::from_markdown(md).unwrap();
+        assert_eq!(back.language, "en");
+        assert_eq!(back.solid_ground, vec!["general programming curiosity"]);
+        assert_eq!(back.goals, vec!["learn Rust and AI development"]);
+        assert_eq!(
+            back.pace_notes.as_deref(),
+            Some("prefers short explanations with a check question")
+        );
+    }
+
+    #[test]
+    fn parses_legacy_spanish_profile() {
+        let md = "# Perfil del aprendiz\n\n- Idioma: es\n\n## Terreno sólido\n- python\n\n## Metas\n- aprender rust\n\n## Lucha\nTeoría abstracta.\n";
+        let back = LearnerProfile::from_markdown(md).unwrap();
+        assert_eq!(back.language, "es");
+        assert_eq!(back.solid_ground, vec!["python"]);
+        assert_eq!(back.goals, vec!["aprender rust"]);
+        assert_eq!(back.struggle_prefs.as_deref(), Some("Teoría abstracta."));
     }
 }

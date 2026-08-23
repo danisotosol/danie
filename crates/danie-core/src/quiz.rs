@@ -152,7 +152,7 @@ mod tests {
         assert!((card.ease - 2.5).abs() < 1e-9);
         card.review(5).unwrap();
         assert!((card.ease - 2.6).abs() < 1e-9);
-        assert_eq!(card.interval_days, ((6u32 as f64) * 2.6).round() as u32);
+        assert_eq!(card.interval_days, (6_f64 * 2.6).round() as u32);
         assert_eq!(card.interval_days, 16);
     }
 

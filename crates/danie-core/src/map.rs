@@ -166,18 +166,24 @@ impl KnowledgeMap {
         for raw in text.lines() {
             let line = raw.trim_end();
 
-            if let Some(rest) = line.strip_prefix("# Map — ") {
-                goal = Some(rest.trim().to_string());
+            const GOAL_PREFIXES: [&str; 4] = ["# Map — ", "# Map - ", "# Mapa — ", "# Mapa - "];
+            if let Some(prefix) = GOAL_PREFIXES
+                .iter()
+                .find(|prefix| line.trim_start().starts_with(*prefix))
+            {
+                goal = Some(line.trim_start()[prefix.len()..].trim().to_string());
                 continue;
             }
-            if let Some(rest) = line.strip_prefix("Updated: ") {
+            if let Some(rest) =
+                line.strip_prefix("Updated: ").or_else(|| line.strip_prefix("Actualizado: "))
+            {
                 let dt = chrono::DateTime::parse_from_rfc3339(rest.trim())
                     .map_err(|e| CoreError::InvalidFormat(format!("invalid date: {e}")))?;
                 updated = Some(dt.with_timezone(&Utc));
                 continue;
             }
             match line.trim() {
-                "## Strands" => {
+                "## Strands" | "## Hebras" => {
                     section = Section::Strands;
                     table_rows = 0;
                     continue;
@@ -202,13 +208,16 @@ impl KnowledgeMap {
                     table_rows += 1;
                     match table_rows {
                         1 => {
-                            let expected = ["strand", "status", "evidence"];
-                            if cells.len() != expected.len()
-                                || !cells
-                                    .iter()
-                                    .zip(expected)
-                                    .all(|(got, want)| got.eq_ignore_ascii_case(want))
-                            {
+                            let english = ["strand", "status", "evidence"];
+                            let spanish = ["hebra", "estado", "evidencia"];
+                            let matches_header = [english, spanish].iter().any(|expected| {
+                                cells.len() == expected.len()
+                                    && cells
+                                        .iter()
+                                        .zip(*expected)
+                                        .all(|(got, want)| got.eq_ignore_ascii_case(want))
+                            });
+                            if !matches_header {
                                 return Err(CoreError::InvalidFormat(
                                     "invalid strand table header".into(),
                                 ));
@@ -356,5 +365,23 @@ mod tests {
             "Updated: yesterday",
         );
         assert!(KnowledgeMap::from_markdown(&no_updated).is_err());
+    }
+
+    #[test]
+    fn parses_hyphen_goal_prefix_from_real_stores() {
+        let md = "# Map - rust\n\nUpdated: 2026-08-22T13:37:24.099703500+00:00\n\n## Strands\n\n| strand | status | evidence |\n|---|---|---|\n| ownership | known | diagnostic probe: answered correctly |\n";
+        let back = KnowledgeMap::from_markdown(md).unwrap();
+        assert_eq!(back.goal, "rust");
+        assert_eq!(back.strands[0].name, "ownership");
+        assert_eq!(back.strands[0].status, StrandStatus::Known);
+    }
+
+    #[test]
+    fn parses_legacy_spanish_map_headers() {
+        let md = "# Mapa — funcional\n\nActualizado: 2026-08-22T13:37:24+00:00\n\n## Hebras\n\n| hebra | estado | evidencia |\n|---|---|---|\n| lambdas | known | ok |\n";
+        let back = KnowledgeMap::from_markdown(md).unwrap();
+        assert_eq!(back.goal, "funcional");
+        assert_eq!(back.strands[0].name, "lambdas");
+        assert_eq!(back.strands[0].status, StrandStatus::Known);
     }
 }

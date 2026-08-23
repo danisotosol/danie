@@ -172,9 +172,29 @@ fn is_effectively_default(profile: &LearnerProfile) -> bool {
 impl App {
     fn new(mode: Mode, topic: Option<String>, store_dir: &Path) -> anyhow::Result<Self> {
         let store = DanieStore::open(store_dir)?;
-        let profile = store.load_profile()?;
+        let (profile, profile_warning) = match store.load_profile() {
+            Ok(profile) => (profile, None),
+            Err(error) => (
+                LearnerProfile::default(),
+                Some(format!("Could not parse {store_dir:?}/profile.md ({error}); using defaults. It will be rewritten in canonical format on first save.")),
+            ),
+        };
+        if let Some(warning) = &profile_warning {
+            eprintln!("warning: {warning}");
+        }
         let profile_default = is_effectively_default(&profile);
-        let queue = store.load_queue()?;
+        let (queue, queue_warning) = match store.load_queue() {
+            Ok(queue) => (queue, None),
+            Err(error) => (
+                SrsQueue::default(),
+                Some(format!(
+                    "Could not parse srs.json ({error}); starting an empty review schedule."
+                )),
+            ),
+        };
+        if let Some(warning) = &queue_warning {
+            eprintln!("warning: {warning}");
+        }
         let mut app = Self {
             mode,
             store,
