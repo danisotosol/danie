@@ -34,6 +34,42 @@ tutor that adapts to *you*:
                               └────────┘
 ```
 
+## How the loop works
+
+The probe quiz and the lock-in quiz look different on purpose. Each stage
+asks something different of you:
+
+1. **Probe.** A short diagnostic quiz on the goal. Every question includes an
+   explicit "I don't know" option, because at this stage not knowing yet is
+   the expected, honest answer for most of a new topic.
+
+   ![Probe with I don't know](docs/screenshots/05-probe-idk-option.png)
+2. **Plan.** Your probe results become a prerequisite DAG: strands you
+   already know are skipped, unknown ones are ordered by what depends on
+   what.
+
+   ![Generated plan DAG](docs/screenshots/08-plan-dag.png)
+3. **Teach.** One node, one idea, under ~120 words, written in your
+   profile's language.
+4. **Lock-in quiz.** Exactly 4 concrete options, deliberately with no
+   "I don't know": you just read the explanation for this exact idea, so a
+   guess is a more honest check than a bail-out.
+
+   ![Lock-in quiz](docs/screenshots/06-lockin-quiz.png)
+   - **Right:** the node locks in and joins the SM-2 review queue.
+   - **Wrong:** you land on a menu: *Retry quiz*, *Insert prerequisite*
+     (danie diagnoses the missing foundation and adds a node for it before
+     this one, then teaches that first), *Mark known anyway* (asks you to
+     grade recall quality: Again / Hard / Good / Easy / Perfect), or
+     *End session*.
+5. **Review.** `danie review` resurfaces locked nodes on their SM-2
+   schedule, graded on the same Again-to-Perfect scale.
+
+So if you don't actually know the answer at lock-in time, answering wrong
+and picking *Insert prerequisite* is the intended path, not a dead end.
+
+![Wrong-answer menu](docs/screenshots/07-wrong-menu.png)
+
 ## Install
 
 ```sh
